@@ -1,0 +1,16 @@
+services:
+  web:
+    image: mcd-monitor
+    container_name: mcd_monitor
+    restart: unless-stopped
+    ports:
+      - "4332:8000"
+    environment:
+      - JEST_WORKER_ID=1
+    ipc: host
+    networks:
+      - nginx_default
+
+networks:
+  nginx_default:
+    external: true
