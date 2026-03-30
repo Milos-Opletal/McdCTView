@@ -1,0 +1,1 @@
+docker build -t mcd-monitor . ; docker save -o mcd-monitor.tar mcd-monitor

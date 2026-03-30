@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyMcd Verifikace</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #f7f7f7;
+            color: #292929;
+        }
+        
+        /* Navbar */
+        .mcd-navbar {
+            background-color: #ffffff;
+            border-bottom: 2px solid #e0e0e0;
+            padding: 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .mcd-logo {
+            color: #ffc72c;
+            font-size: 32px;
+            font-weight: 800;
+            text-decoration: none;
+            letter-spacing: -2px;
+            font-family: Arial, sans-serif;
+        }
+        
+        .mcd-user-badge {
+            position: absolute;
+            right: 20px;
+            background-color: #8DB92E;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* Breadcrumbs */
+        .mcd-breadcrumbs {
+            background-color: #ffffff;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 12px 20px;
+            font-size: 14px;
+            color: #555;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .mcd-breadcrumbs i {
+            color: #da291c; /* Mcd Red */
+            font-size: 12px;
+        }
+        .mcd-breadcrumbs span {
+            color: #292929;
+            font-weight: 600;
+        }
+
+        /* App container */
+        .mcd-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* Filter Bar */
+        .filter-bar {
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 15px 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-controls {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        /* Form controls */
+        .form-check-input:checked {
+            background-color: #8DB92E;
+            border-color: #8DB92E;
+        }
+        .form-select {
+            border-radius: 20px;
+            border: 1px solid #ccc;
+            font-weight: 600;
+            color: #292929;
+            padding: 5px 30px 5px 15px;
+        }
+        .form-select:focus {
+            box-shadow: 0 0 0 0.25rem rgba(255, 199, 44, 0.25);
+            border-color: #ffc72c;
+        }
+        
+        /* Banner */
+        .mcd-banner {
+            background-color: #ffc72c; /* Official Mcd Yellow */
+            color: #1a1a1a;
+            font-weight: 700;
+            font-size: 20px;
+            padding: 15px 30px;
+            border-radius: 30px;
+            margin-bottom: 30px;
+        }
+
+        /* Buttons */
+        .btn-mcd {
+            background-color: #ffc72c;
+            color: #1a1a1a;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 12px;
+            text-transform: uppercase;
+            padding: 8px 20px;
+            border: none;
+            transition: background-color 0.2s;
+        }
+        .btn-mcd:hover {
+            background-color: #e6a619;
+            color: #1a1a1a;
+        }
+        .btn-mcd-outline {
+            background-color: transparent;
+            color: #1a1a1a;
+            border: 2px solid #ffc72c;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 12px;
+            text-transform: uppercase;
+            padding: 6px 18px;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-mcd-outline:hover {
+            background-color: #ffc72c;
+            color: #1a1a1a;
+        }
+        
+        .btn-action-refresh {
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 6px 12px;
+            font-weight: 600;
+            color: #555;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .btn-action-refresh:hover {
+            background-color: #f0f0f0;
+            color: #222;
+        }
+
+        /* Shift visual indicators */
+        .future-shift {
+            background-color: #f9f9f9 !important;
+            opacity: 0.75;
+            border: 1px dashed #e0e0e0 !important;
+        }
+        .future-shift .emp-icon {
+            background-color: #d0d0d0 !important;
+        }
+
+        /* Employee Rows */
+        .employee-row { 
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+            background: #ffffff;
+            overflow: hidden;
+        }
+        
+        /* active left border indicator */
+        .employee-row::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 5px;
+            background-color: transparent;
+            transition: background-color 0.2s;
+        }
+        .employee-row:hover::before {
+            background-color: #ffc72c;
+        }
+        
+        .hidden-row { display: none !important; }
+        
+        .emp-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #292929;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .emp-icon {
+            background-color: #ffc72c;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .issue-counter {
+            color: #1a1a1a;
+            font-size: 14px;
+        }
+
+        .issue-item {
+            border-bottom: 1px solid #f0f0f0;
+            padding: 12px 0;
+        }
+        .issue-item:last-child {
+            border-bottom: none;
+        }
+        
+        .issue-title {
+            font-weight: 600;
+            color: #292929;
+        }
+        
+        .issue-due {
+            font-weight: 700;
+            color: #292929;
+            font-size: 14px;
+            text-align: right;
+        }
+        .issue-due span {
+            display: block;
+            font-weight: 400;
+            color: #777;
+            font-size: 12px;
+        }
+        
+        .status-badge {
+            background-color: #f7f7f7;
+            color: #555;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            border: 1px solid #eee;
+        }
+        .status-badge.urgent {
+            background-color: #fff0f0;
+            color: #da291c;
+            border-color: #ffdada;
+        }
+        
+    </style>
+</head>
+<body>
+
+
+<div class="mcd-container">
+    
+    <div class="filter-bar">
+        <div class="filter-controls">
+
+            <div class="form-check form-switch text-nowrap mt-1 ms-3">
+                <input class="form-check-input" type="checkbox" id="currentShiftSwitch" checked>
+                <label class="form-check-label fw-bold" for="currentShiftSwitch" style="color: #666; font-size: 14px;">Aktuálně na směně</label>
+            </div>
+
+            <div class="ms-4">
+                <select id="departmentFilter" class="form-select form-select-sm shadow-none" style="min-width: 150px;">
+                    <option value="all" selected>Vše</option>
+                    <option value="kitchen">Kuchyně</option>
+                    <option value="service">Servis</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="d-flex align-items-center gap-3">
+            <div class="text-muted small fw-bold"><i class="bi bi-clock-history"></i> Aktualizace: {{ last_update }}</div>
+            <a href="/refresh" class="btn-action-refresh text-nowrap"><i class="bi bi-cloud-download"></i> Obnovit data</a>
+        </div>
+    </div>
+
+    <!-- Wide Yellow Banner -->
+    <div class="mcd-banner shadow-sm">
+        Přehled docházky a verifikací
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} border-0 shadow-sm rounded-3">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div id="employeeList">
+        {% if employees|length == 0 %}
+            <div class="bg-white p-5 text-center rounded-3 shadow-sm border border-light" id="allClearMsg">
+                <div class="mb-3">
+                    <div style="width:100px; height:100px; background:#f0f8e6; color:#8DB92E; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:40px;">
+                        <i class="bi bi-check-lg"></i>
+                    </div>
+                </div>
+                <h4 style="color:#292929; font-weight:700;">Žádná data</h4>
+                <p class="text-muted">Pro aktuální směny nemáte žádné chybějící verifikace.</p>
+            </div>
+        {% endif %}
+
+        {% for emp in employees %}
+        <div class="employee-row card position-relative"
+             data-start="{{ emp.start_full }}"
+             data-end="{{ emp.end_full }}">
+            <div class="card-body p-4">
+                <div class="row align-items-center">
+                    
+                    <div class="col-md-3 border-end">
+                        <div class="emp-name"><div class="emp-icon"><i class="bi bi-person"></i></div> {{ emp.name }}</div>
+                        <div class="text-muted small fw-bold mb-3 ms-5"><i class="bi bi-clock me-1"></i>{{ emp.shift }}</div>
+                        
+                        <div class="ms-5 mb-4">
+                            <span class="issue-counter fw-bold text-muted">{{ emp.issues|length }} Verifikací</span>
+                        </div>
+
+                        <div class="ms-5">
+                            <a href="https://mymcd.eu/app/{{ restaurant_code }}/profile/{{ emp.id }}"
+                               target="_blank"
+                               class="btn-mcd-outline">
+                                TRÉNINKOVÝ PROFIL
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="col-md-9 ps-4">
+                        <div class="issue-container">
+                            {% for issue in emp.issues %}
+                            <div class="issue-item d-flex justify-content-between align-items-center"
+                                 data-status="{{ issue.status }}"
+                                 data-date="{{ issue.next_date if issue.next_date else 'N/A' }}">
+                                <div>
+                                    <div class="issue-title">{{ issue.name }}</div>
+                                    <span class="status-badge mt-1 d-inline-block {% if not 'Verifikován' in issue.status %}urgent{% endif %}">
+                                        {{ issue.status }}
+                                    </span>
+                                </div>
+                                <div class="issue-due">
+                                    {% if issue.next_date and issue.next_date != 'N/A' %}
+                                        <span>Limitní datum:</span>
+                                        {{ issue.next_date }}
+                                    {% else %}
+                                        <span class="text-danger fw-bold">N/A</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        <div id="noCurrentShiftsMsg" class="bg-white p-5 text-center rounded-3 shadow-sm border border-light hidden-row">
+            <div class="mb-3">
+                <div style="width:100px; height:100px; background:#f7f7f7; color:#ccc; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:40px;">
+                    <i class="bi bi-funnel"></i>
+                </div>
+            </div>
+            <h4 style="color:#292929; font-weight:700;">Žádná data</h4>
+            <p class="text-muted">Pro aktuální filtry nemáme žádná data k zobrazení.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const shiftToggle = document.getElementById('currentShiftSwitch');
+        const deptFilter = document.getElementById('departmentFilter');
+        const employeeList = document.getElementById('employeeList');
+        const noDataMsg = document.getElementById('noCurrentShiftsMsg');
+
+        let rows = Array.from(document.querySelectorAll('.employee-row'));
+
+        const categoryMap = {
+            "1. Pohostinnost": "s",
+            "2. Food Safety": "v",
+            "3.1. Temperace & Příprava": "k",
+            "3.2. MFY": "k",
+            "3.3. MFY Snídaně": "k",
+            "3.4. Batch Cooker Snídaně": "k",
+            "3.5. Batch Cooker Fritéza": "k",
+            "3.6. Batch Cooker Grill": "k",
+            "3.7. Hranolky & Hash browns": "k",
+            "3.8. Nápoje & Dezerty": "s",
+            "4.1. Kompletace & Prezentace": "s",
+            "4.2. Objednávka & Platba": "s",
+            "4.3. DT Kompletace & Prezentace": "s",
+            "4.4. DT Objednávka & Platba": "s",
+            "4.5. Lobby & Kiosek": "s",
+            "5. McCafé": "s"
+        };
+
+        function parseCzDate(dateStr) {
+            if (!dateStr || dateStr === 'N/A') return 0; 
+            const parts = dateStr.split('.');
+            if (parts.length === 3) {
+                return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+            }
+            return Infinity;
+        }
+
+        function filterAndSortRows() {
+            const shiftChecked = shiftToggle.checked;
+            const deptValue = deptFilter.value;
+            const now = new Date();
+            let visibleCount = 0;
+
+            rows.forEach(row => {
+                const startStr = row.getAttribute('data-start').replace(' ', 'T');
+                const endStr = row.getAttribute('data-end').replace(' ', 'T');
+                const startDate = new Date(startStr);
+                const endDate = new Date(endStr);
+
+                // Hide completely if their shift is already over for today!
+                if (now > endDate) {
+                    row.classList.add('hidden-row');
+                    return; // Skip drawing this employee entirely
+                }
+
+                const isFuture = (now < startDate);
+                const isCurrent = (now >= startDate && now <= endDate);
+
+                let meetsShiftCriteria = true;
+                if (shiftChecked) {
+                    meetsShiftCriteria = isCurrent;
+                }
+
+                if (isFuture) {
+                    row.classList.add('future-shift');
+                } else {
+                    row.classList.remove('future-shift');
+                }
+
+                const issues = row.querySelectorAll('.issue-item');
+                let visibleIssueCount = 0;
+                let earliestDate = Infinity;
+
+                issues.forEach(issue => {
+                    const status = issue.getAttribute('data-status');
+                    const dateStr = issue.getAttribute('data-date');
+                    const nameEl = issue.querySelector('.issue-title');
+                    const issueName = nameEl ? nameEl.innerText.trim() : '';
+
+                    let showIssue = true;
+
+                    if (showIssue) {
+                        const cat = categoryMap[issueName] || 'v'; 
+                        if (deptValue === 'kitchen' && cat === 's') showIssue = false;
+                        if (deptValue === 'service' && cat === 'k') showIssue = false;
+                    }
+
+                    if (showIssue) {
+                        issue.classList.remove('d-none');
+                        visibleIssueCount++;
+
+                        const issueTime = parseCzDate(dateStr);
+                        if (issueTime < earliestDate) earliestDate = issueTime;
+                    } else {
+                        issue.classList.add('d-none');
+                    }
+                });
+
+                const container = row.querySelector('.issue-container');
+                const issueArray = Array.from(issues);
+                issueArray.sort((a, b) => {
+                    const timeA = parseCzDate(a.getAttribute('data-date'));
+                    const timeB = parseCzDate(b.getAttribute('data-date'));
+                    return timeA - timeB;
+                });
+                issueArray.forEach(issue => container.appendChild(issue));
+
+                row.querySelector('.issue-counter').innerText = visibleIssueCount + " Verifikací";
+                row.setAttribute('data-earliest', earliestDate);
+
+                if (meetsShiftCriteria && visibleIssueCount > 0) {
+                    row.classList.remove('hidden-row');
+                    visibleCount++;
+                } else {
+                    row.classList.add('hidden-row');
+                }
+            });
+
+            rows.sort((a, b) => {
+                const dateA = parseFloat(a.getAttribute('data-earliest'));
+                const dateB = parseFloat(b.getAttribute('data-earliest'));
+                return dateA - dateB;
+            });
+
+            rows.forEach(row => employeeList.appendChild(row));
+            employeeList.appendChild(noDataMsg);
+
+            if (visibleCount === 0 && rows.length > 0) {
+                noDataMsg.classList.remove('hidden-row');
+            } else {
+                noDataMsg.classList.add('hidden-row');
+            }
+        }
+
+        filterAndSortRows();
+
+        shiftToggle.addEventListener('change', filterAndSortRows);
+        deptFilter.addEventListener('change', filterAndSortRows);
+
+        setInterval(filterAndSortRows, 60000);
+    });
+</script>
+
+</body>
+</html>
