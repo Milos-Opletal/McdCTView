@@ -5,6 +5,8 @@ services:
     restart: unless-stopped
     ports:
       - "4332:8000"
+    env_file:
+      - .env
     environment:
       - JEST_WORKER_ID=1
     ipc: host

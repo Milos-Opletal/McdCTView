@@ -1,9 +1,13 @@
+import os
 from flask import Flask, render_template, redirect, url_for, flash
 from datetime import datetime
+from dotenv import load_dotenv
 from MyMcdAPI import MyMcdAPI, Role
 
+load_dotenv()
+
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-here'
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'change-me')
 
 # --- CACHE ---
 CACHE = {
@@ -14,8 +18,8 @@ CACHE = {
 }
 
 # Credentials
-EMAIL = "manager@example.com"
-PASSWORD = "your-password-here"
+EMAIL = os.environ['MCD_EMAIL']
+PASSWORD = os.environ['MCD_PASSWORD']
 
 
 # --- CORE LOGIC ---
