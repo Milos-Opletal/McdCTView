@@ -32,8 +32,8 @@ CACHE: Dict[str, Any] = {
     "last_update": None
 }
 
-EMAIL = os.environ.get("MCD_EMAIL", "")
-PASSWORD = os.environ.get("MCD_PASSWORD", "")
+EMAIL = os.environ.get("MYMCD_EMAIL") or os.environ.get("MCD_EMAIL", "")
+PASSWORD = os.environ.get("MYMCD_PASSWORD") or os.environ.get("MCD_PASSWORD", "")
 
 
 # --- CORE REFRESH LOGIC ---
