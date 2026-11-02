@@ -40,8 +40,8 @@ cp .env.example .env
 
 ```env
 # Required McDonald's API credentials
-MCD_EMAIL=your_email@example.com
-MCD_PASSWORD=your_password_here
+MYMCD_EMAIL=your_email@example.com
+MYMCD_PASSWORD=your_password_here
 
 # Optional: Persistent secret key for Flask sessions
 FLASK_SECRET_KEY=generate_a_random_secret_key_here
@@ -80,7 +80,7 @@ docker compose up -d --build
 | Internal Port | `8000` |
 | Host Port | `4332` |
 | Network | `nginx_default` (external) |
-| Environment Variables | `MCD_EMAIL`, `MCD_PASSWORD` |
+| Environment Variables | `MYMCD_EMAIL`, `MYMCD_PASSWORD` |
 
 ---
 

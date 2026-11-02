@@ -32,8 +32,8 @@ CACHE: Dict[str, Any] = {
     "last_update": None
 }
 
-EMAIL = os.environ.get("MYMCD_EMAIL") or os.environ.get("MCD_EMAIL", "")
-PASSWORD = os.environ.get("MYMCD_PASSWORD") or os.environ.get("MCD_PASSWORD", "")
+EMAIL = os.environ.get("MYMCD_EMAIL", "")
+PASSWORD = os.environ.get("MYMCD_PASSWORD", "")
 
 
 # --- CORE REFRESH LOGIC ---
@@ -114,7 +114,7 @@ def fetch_fresh_data() -> None:
     logger.info("--- STARTING DATA REFRESH ---")
 
     if not EMAIL or not PASSWORD:
-        raise ValueError("MCD_EMAIL and MCD_PASSWORD must be configured in environment.")
+        raise ValueError("MYMCD_EMAIL and MYMCD_PASSWORD must be configured in environment.")
 
     api = MyMcdAPI(EMAIL, PASSWORD)
     api.login()

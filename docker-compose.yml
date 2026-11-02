@@ -7,10 +7,8 @@ services:
     ports:
       - "4332:8000"
     environment:
-      - MYMCD_EMAIL=${MYMCD_EMAIL:-${MCD_EMAIL}}
-      - MYMCD_PASSWORD=${MYMCD_PASSWORD:-${MCD_PASSWORD}}
-      - MCD_EMAIL=${MYMCD_EMAIL:-${MCD_EMAIL}}
-      - MCD_PASSWORD=${MYMCD_PASSWORD:-${MCD_PASSWORD}}
+      - MYMCD_EMAIL=${MYMCD_EMAIL}
+      - MYMCD_PASSWORD=${MYMCD_PASSWORD}
     command: gunicorn --workers 1 --threads 1 --timeout 60 -b 0.0.0.0:8000 app:app
 
     ipc: host
