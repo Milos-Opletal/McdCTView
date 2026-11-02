@@ -1,7 +1,8 @@
 .env
 .git
 .venv
+venv
 __pycache__
 .idea
-mcd-monitor.tar
+*.tar
 build.txt

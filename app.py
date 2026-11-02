@@ -1,157 +1,202 @@
+import logging
 import os
 import secrets
-from flask import Flask, render_template, redirect, url_for, flash
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from dotenv import load_dotenv
+from flask import Flask, flash, redirect, render_template, url_for
+
 from MyMcdAPI import MyMcdAPI, Role
 
 load_dotenv()
 
-app = Flask(__name__)
-app.secret_key = secrets.token_hex(32)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+logger = logging.getLogger("mcd-ct-view")
 
-# --- CACHE ---
-CACHE = {
+app = Flask(__name__)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY") or secrets.token_hex(32)
+
+# --- THREAD-SAFE CACHE ---
+_cache_lock = threading.Lock()
+CACHE: Dict[str, Any] = {
     "date": None,
     "data": [],
     "restaurant_code": None,
     "last_update": None
 }
 
-# Credentials
-EMAIL = os.environ['MCD_EMAIL']
-PASSWORD = os.environ['MCD_PASSWORD']
+EMAIL = os.environ.get("MCD_EMAIL", "")
+PASSWORD = os.environ.get("MCD_PASSWORD", "")
 
 
-# --- CORE LOGIC ---
-def fetch_fresh_data():
-    print("--- STARTING DATA REFRESH ---")
-    
-    api = MyMcdAPI(EMAIL, PASSWORD)
+# --- CORE REFRESH LOGIC ---
+def _process_employee_row(api: MyMcdAPI, row: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Helper to process a single floorplan row and fetch employee verifications if applicable."""
+    info = row.get("employeeInfo") or {}
+    pos_id = info.get("position")
+
+    # Preserve original position filter (pos_id in [1, 2])
+    if pos_id not in (1, 2):
+        return None
+
+    shift = row.get("shiftPlan") or {}
+    intervals = shift.get("intervals")
+    if not intervals:
+        return None
+
+    full_start = intervals[0]["from"]
+    full_end = intervals[0]["to"]
+
+    start_display = full_start.split(" ")[1][:5]
+    end_display = full_end.split(" ")[1][:5]
+
+    employee_id = info.get("id")
+    if not employee_id:
+        return None
+
     try:
-        api.login()
-        print(f"Logged in successfully as {api.role.name} for restaurant {api.restaurant_id}")
+        verif_data = api.get_profile_verifications(employee_id)
+        all_verifs = verif_data.get("verifications", [])
     except Exception as e:
-        print(f"Error during API login: {e}")
-        raise
+        logger.warning(f"Error fetching verifications for employee {employee_id}: {e}")
+        return None
+
+    issues = []
+    now = datetime.now()
+
+    for v in all_verifs:
+        # Preserve original logic: only include verifications with a defined plan
+        if v.get("plan") is not None:
+            status = v.get("status", "")
+            is_urgent = False
+
+            if not v.get("is_verified"):
+                is_urgent = True
+            elif v.get("next_verification_date") and v.get("next_verification_date") != "N/A":
+                try:
+                    due_date = datetime.strptime(v.get("next_verification_date"), "%d.%m.%Y")
+                    days_left = (due_date - now).days
+                    if days_left <= 30:
+                        is_urgent = True
+                except (ValueError, TypeError):
+                    pass
+
+            if is_urgent:
+                issues.append({
+                    "name": v.get("name"),
+                    "next_date": v.get("next_verification_date"),
+                    "status": status
+                })
+
+    if issues:
+        return {
+            "id": employee_id,
+            "name": info.get("fullName", "Neznámý"),
+            "shift": f"{start_display} - {end_display}",
+            "start_time": start_display,
+            "start_full": full_start,
+            "end_full": full_end,
+            "issues": issues
+        }
+
+    return None
+
+
+def fetch_fresh_data() -> None:
+    """Fetch floorplan and compute urgent verification statuses for all employees on shift."""
+    logger.info("--- STARTING DATA REFRESH ---")
+
+    if not EMAIL or not PASSWORD:
+        raise ValueError("MCD_EMAIL and MCD_PASSWORD must be configured in environment.")
+
+    api = MyMcdAPI(EMAIL, PASSWORD)
+    api.login()
+    logger.info(f"Logged in successfully as {api.role.name} for restaurant {api.restaurant_id}")
 
     code = api.restaurant_code
     if not code:
-        print("Could not find restaurant code.")
+        logger.error("Could not find restaurant code.")
         return
-
-    CACHE['restaurant_code'] = code
 
     today = datetime.now().strftime("%Y-%m-%d")
-    
-    try:
-        if api.role >= Role.MANAGER:
-            floorplan = api.get_restaurant_floorplan(today)
-        else:
-            print("Access level is too low to fetch whole restaurant floorplan.")
-            return
-    except Exception as e:
-        print(f"Error fetching floorplan: {e}")
+
+    if api.role < Role.MANAGER:
+        logger.error("Access level is too low to fetch whole restaurant floorplan.")
         return
 
-    results = []
+    floorplan = api.get_restaurant_floorplan(today)
+    rows_to_check: List[Dict[str, Any]] = []
 
-    groups = floorplan.get('positionGroups') or []
-    for group in groups:
-        rows = group.get('rows') or []
-        for row in rows:
-            info = row.get('employeeInfo') or {}
-            pos_id = info.get('position')
+    for group in (floorplan.get("positionGroups") or []):
+        for row in (group.get("rows") or []):
+            info = row.get("employeeInfo") or {}
+            if info.get("position") in (1, 2):
+                rows_to_check.append(row)
 
-            # User explicitly requested preserving the old `pos_id in [1, 2]` filter
-            if pos_id in [1, 2]:
-                shift = row.get('shiftPlan') or {}
-                intervals = shift.get('intervals')
-                if intervals:
-                    full_start = intervals[0]['from']
-                    full_end = intervals[0]['to']
+    results: List[Dict[str, Any]] = []
 
-                    start_display = full_start.split(' ')[1][:5]
-                    end_display = full_end.split(' ')[1][:5]
+    # Process employees concurrently for fast response times
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = [executor.submit(_process_employee_row, api, row) for row in rows_to_check]
+        for future in as_completed(futures):
+            res = future.result()
+            if res:
+                results.append(res)
 
-                    employee_id = info.get('id')
-                    
-                    # Fetch verifications via the new wrapper
-                    verif_data = api.get_profile_verifications(employee_id)
-                    all_verifs = verif_data.get("verifications", [])
-                    
-                    issues = []
-                    for v in all_verifs:
-                        # Emulate old logic: only include ones with defined plan
-                        if v.get('plan') is not None:
-                            status = v.get('status', '')
-                            is_urgent = False
-                            
-                            if not v.get('is_verified'):
-                                is_urgent = True
-                            elif v.get('next_verification_date') and v.get('next_verification_date') != "N/A":
-                                try:
-                                    due_date = datetime.strptime(v.get('next_verification_date'), "%d.%m.%Y")
-                                    days_left = (due_date - datetime.now()).days
-                                    if days_left <= 30:
-                                        is_urgent = True
-                                except:
-                                    pass
-                                    
-                            if is_urgent:
-                                issues.append({
-                                    "name": v.get('name'),
-                                    "next_date": v.get('next_verification_date'),
-                                    "status": status
-                                })
+    results.sort(key=lambda x: x["start_time"])
 
-                    if issues:
-                        results.append({
-                            "id": employee_id,
-                            "name": info.get('fullName', 'Neznámý'),
-                            "shift": f"{start_display} - {end_display}",
-                            "start_time": start_display,
-                            "start_full": full_start,
-                            "end_full": full_end,
-                            "issues": issues
-                        })
+    with _cache_lock:
+        CACHE["restaurant_code"] = code
+        CACHE["data"] = results
+        CACHE["date"] = today
+        CACHE["last_update"] = datetime.now().strftime("%H:%M:%S")
 
-    results.sort(key=lambda x: x['start_time'])
-
-    CACHE['data'] = results
-    CACHE['date'] = today
-    CACHE['last_update'] = datetime.now().strftime("%H:%M:%S")
-    print(f"--- REFRESH DOKONČEN: Nalezeno {len(results)} zaměstnanců s verifikacemi ---")
+    logger.info(f"--- REFRESH COMPLETE: Found {len(results)} employees with verification issues ---")
 
 
 # --- ROUTES ---
 
-@app.route('/')
+@app.route("/")
 def index():
     today_str = datetime.now().strftime("%Y-%m-%d")
 
-    if CACHE['date'] != today_str:
+    with _cache_lock:
+        needs_refresh = (CACHE["date"] != today_str)
+
+    if needs_refresh:
         try:
-             fetch_fresh_data()
+            fetch_fresh_data()
         except Exception as e:
-             flash(f"Error fetching data on load: {str(e)}", "danger")
+            logger.error(f"Error fetching data on load: {e}")
+            flash(f"Chyba při načítání dat: {str(e)}", "danger")
 
-    return render_template('index.html',
-                           employees=CACHE['data'],
-                           restaurant_code=CACHE['restaurant_code'],
-                           last_update=CACHE['last_update'],
-                           cache_date=CACHE['date'])
+    with _cache_lock:
+        return render_template(
+            "index.html",
+            employees=CACHE["data"],
+            restaurant_code=CACHE["restaurant_code"],
+            last_update=CACHE["last_update"],
+            cache_date=CACHE["date"]
+        )
 
 
-@app.route('/refresh')
+@app.route("/refresh")
 def force_refresh():
     try:
         fetch_fresh_data()
         flash("Data byla úspěšně synchronizována!", "success")
     except Exception as e:
+        logger.error(f"Error during manual refresh: {e}")
         flash(f"Chyba při synchronizaci: {str(e)}", "danger")
-    return redirect(url_for('index'))
+    return redirect(url_for("index"))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True, port=5000)

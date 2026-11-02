@@ -1,80 +1,98 @@
 # McdCTView
 
-A Crew Trainer verification dashboard for McDonald's restaurants in the Czech Republic. It shows which employees on today's shift have missing or expiring training verifications so managers and crew trainers can act on them immediately.
+A Crew Trainer verification monitor dashboard for McDonald's restaurants in the Czech Republic and Slovakia. It automatically checks which employees on today's shift have unverified stations or training certifications expiring within 30 days so managers and Crew Trainers can take action immediately.
 
-**🌐 Live at [ct.mymymcd.eu](https://ct.mymymcd.eu)**
+---
 
-## What it does
+## What It Does
 
-McdCTView pulls the current day's floorplan from the MyMcd portal and cross-references each employee's training profile against the master verification list. It then displays a filterable dashboard of employees who have:
+1. **Daily Floorplan Sync**: Fetches the restaurant floorplan for the current day from `mymcd.eu`.
+2. **Verification Auditing**: Concurrently evaluates crew training status for all employees scheduled on shift.
+3. **Smart Shift Filtering**: Identifies employees needing verifications, displaying their shift timing, status, and direct profile links.
+4. **Live Status Tracking**: Automatically highlights on-shift employees, dims future shifts, and hides ended shifts.
 
-- **Unverified** training stations (not yet passed)
-- **Expiring** verifications (due within 30 days)
-
-The dashboard automatically hides employees whose shifts have already ended and visually dims those whose shifts haven't started yet. Employees can be filtered by department (Kitchen / Service) and by whether they are currently on shift.
+---
 
 ## Tech Stack
 
-- **Backend** — Python / Flask, served via Gunicorn
-- **Frontend** — Jinja2 templates, Bootstrap 5, Bootstrap Icons
-- **API** — [MyMcdAPI](https://github.com/Milos-Opletal/MyMcdAPI) — a custom wrapper used to communicate with the [mymcd.eu](https://mymcd.eu) portal
-- **Deployment** — Docker / Docker Compose
+- **Backend**: Python 3.10+ / Flask, served with Gunicorn
+- **Frontend**: Jinja2 templates, Bootstrap 5, Bootstrap Icons, Montserrat typography
+- **API Client**: [MyMcdAPI](https://github.com/Milos-Opletal/MyMcdAPI)
+- **Deployment**: Docker / Docker Compose (compatible with Portainer)
+
+---
 
 ## Prerequisites
 
-- **Python 3.10+**
-- **Docker** (for containerised deployment)
-- A **MyMcd.eu** account with at least **Manager** level access (required to fetch the full restaurant floorplan)
+- **Python 3.10+** (if running locally)
+- **Docker & Docker Compose** (for containerized deployment)
+- A **MyMcd.eu** account with at least **Manager** level access (required to fetch the restaurant floorplan)
 
-## Setup
+---
 
-### 1. Clone the repository
+## Configuration
+
+Copy `.env.example` to `.env`:
 
 ```bash
-git clone https://github.com/Milos-Opletal/McdCTView.git
-cd McdCTView
+cp .env.example .env
 ```
-
-### 2. Create a `.env` file
 
 ```env
-MCD_EMAIL=your-mymcd-email@example.com
-MCD_PASSWORD=your-mymcd-password
-FLASK_SECRET_KEY=some-random-secret-key
+# Required McDonald's API credentials
+MCD_EMAIL=your_email@example.com
+MCD_PASSWORD=your_password_here
+
+# Optional: Persistent secret key for Flask sessions
+FLASK_SECRET_KEY=generate_a_random_secret_key_here
 ```
 
-### 3. Install dependencies
+---
+
+## Running Locally
 
 ```bash
+# 1. Install dependencies
 pip install -r requirements.txt
-```
 
-### Running locally
-
-```bash
+# 2. Run the development server
 python app.py
 ```
 
-The app will be available at `http://localhost:5000`.
+The application will be accessible at `http://localhost:5000`.
 
-### Running with Docker
+---
+
+## Deployment with Docker / Portainer
+
+The repository includes a production-ready `Dockerfile` and `docker-compose.yml`.
 
 ```bash
-docker build -t mcd-monitor .
-docker compose up -d
+docker compose up -d --build
 ```
 
-The container binds to port **4332** by default (configurable in `docker-compose.yml`).
+### Portainer Configuration Details
 
-> **Note:** The `.env` file is loaded by Docker Compose at runtime via the `env_file` directive — credentials are never baked into the image.
+| Parameter | Value |
+|-----------|-------|
+| Container Name | `mcd-verification-monitor` |
+| Image Name | `mcd-verification-monitor` |
+| Internal Port | `8000` |
+| Host Port | `4332` |
+| Network | `nginx_default` (external) |
+| Environment Variables | `MCD_EMAIL`, `MCD_PASSWORD` |
+
+---
 
 ## Usage
 
-- **Auto-refresh** — Data is fetched automatically on the first visit of each day and cached for the rest of the day.
-- **Manual refresh** — Click the *Obnovit data* button to force a sync.
-- **Filters** — Toggle *Aktuálně na směně* to show only employees currently on shift, or use the department dropdown to filter by Kitchen / Service.
-- **Training profile** — Click *TRÉNINKOVÝ PROFIL* on any employee card to open their full profile on the MyMcd portal.
+- **Automatic Refresh**: Data refreshes automatically on the first visit of each day and is cached in memory.
+- **Manual Refresh**: Click **Obnovit data** to perform a real-time sync with `mymcd.eu`.
+- **Department Filters**: Filter by Kitchen / Service stations.
+- **On-Shift Toggle**: Filter to only show employees currently working their scheduled shift.
+
+---
 
 ## License
 
-This project is not affiliated with or endorsed by McDonald's Corporation.
+This project is an independent tool and is not affiliated with, endorsed by, or sponsored by McDonald's Corporation.
