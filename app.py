@@ -34,6 +34,8 @@ CACHE: Dict[str, Any] = {
 
 EMAIL = os.environ.get("MYMCD_EMAIL", "")
 PASSWORD = os.environ.get("MYMCD_PASSWORD", "")
+RESTAURANT_ID = os.environ.get("MYMCD_RESTAURANT_ID") or os.environ.get("RESTAURANT_ID")
+RESTAURANT_CODE = os.environ.get("MYMCD_RESTAURANT_CODE") or os.environ.get("RESTAURANT_CODE")
 
 
 # --- CORE REFRESH LOGIC ---
@@ -118,6 +120,18 @@ def fetch_fresh_data() -> None:
 
     api = MyMcdAPI(EMAIL, PASSWORD)
     api.login()
+
+    if RESTAURANT_ID:
+        try:
+            api.restaurant_id = int(RESTAURANT_ID)
+            logger.info(f"Using restaurant ID override from environment: {api.restaurant_id}")
+        except ValueError:
+            logger.warning(f"Invalid MYMCD_RESTAURANT_ID format: {RESTAURANT_ID}")
+
+    if RESTAURANT_CODE:
+        api.restaurant_code = RESTAURANT_CODE
+        logger.info(f"Using restaurant code override from environment: {api.restaurant_code}")
+
     logger.info(f"Logged in successfully as {api.role.name} for restaurant {api.restaurant_id}")
 
     code = api.restaurant_code
