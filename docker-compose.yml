@@ -9,6 +9,7 @@ services:
     environment:
       - MYMCD_EMAIL=${MYMCD_EMAIL}
       - MYMCD_PASSWORD=${MYMCD_PASSWORD}
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY}
     command: gunicorn --workers 1 --threads 1 --timeout 60 -b 0.0.0.0:8000 app:app
 
     ipc: host
